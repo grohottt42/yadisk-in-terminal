@@ -4,7 +4,7 @@ import os
 
 load_dotenv()
 
-this_dir = '/Книги/Квант/2011'
+current_path = '/Книги/Квант/2011'
 path_to = ''
 TOKEN = os.getenv("TOKEN")
 
@@ -16,15 +16,17 @@ def look_dir(path: str="") -> list:
         return [book.name for book in list(client.listdir(f'{path}'))]
 
 def change_dir(path: str=''):
-    global this_dir
+    global current_path
     with client:
         if path == '..':
-            this_dir = '/'.join(this_dir.split('/')[:-1]) 
+            current_path = '/'.join(current_path.split('/')[:-1]) 
+            current_path = '/' if current_path == '' else current_path
         elif path[0] == '/':
-            this_dir = path
+            if client.exists(path.strip()) and client.is_dir(path.strip()):
+                current_path = path.strip()
         else: 
-            if client.exists(this_dir + '/' + path): 
-                this_dir = this_dir + '/' + path     
+            if client.exists(current_path.strip('/') + '/' + path) and client.is_dir(current_path.strip('/') + '/' + path): 
+                current_path = current_path.strip('/') + '/' + path     
 
 def mk_dir(path: str='', name: str=''):
     with client:
@@ -35,29 +37,35 @@ def mk_dir(path: str='', name: str=''):
 
 
 def download(path: str=''): 
+    file_name, dest_path = path.rsplit(' ', 1)
     with client:
-        client.download(f'{this_dir}', f'C:\\Users\\Fayaz\\Python\\downloads\\{this_dir.split('/')[-1]}')
+        if file_name[0] =='/':
+            client.download(file_name, dest_path)
+        else:
+            client.download(current_path + '/' + file_name, dest_path)
 
 
 def move_file(path:str=''):
-    global this_dir
+    global current_path
     with client:
-        client.move(this_dir, path)
-        this_dir = path
+        client.move(current_path, path)
+        current_path = path
 
 
 def remove(path:str=''):
-    global this_dir
+    global current_path
     with client:
-        client.remove(this_dir)
-        this_dir = '/'.join(this_dir.split('/')[:-1])
+        if client.exists(current_path + '/' + path):     
+            client.remove(current_path + '/' + path)
+        else:
+            print('Such a file or directory does not exist.')
 
 
 def rename(path:str=''):
-    global this_dir
+    global current_path
     with client:
-        client.rename(this_dir, path)
-        this_dir = path
+        client.rename(current_path, path)
+        current_path = path
 
 def exit():
     with client:
@@ -66,45 +74,45 @@ def exit():
 
 def upload(file_name:str=''): 
     with client:
-        client.upload(file_name, this_dir+"/"+file_name, overwrite=True)
+        client.upload(file_name, current_path+"/"+file_name, overwrite=True)
 
 
 if __name__ == "__main__":
-    print(look_dir(this_dir))
+    print(look_dir(current_path))
     while True:
         try:
-            parts = input(f"{this_dir}: ").strip().split(" ", 1)
+            parts = input(f"{current_path}: ").strip().split(" ", 1)
 
             command = parts[0]
-            path_to = parts[1] if len(parts) > 1 else ""
+            argument = parts[1] if len(parts) > 1 else ""
 
             if command == "cd":
-                change_dir(path_to)
+                change_dir(argument)
 
             if command == 'ls':
-                print(look_dir(this_dir))
+                print(look_dir(current_path))
 
             if command == 'mkdir':
-                mk_dir(this_dir, path_to)
+                mk_dir(current_path, argument)
 
             if command == 'download':
-                download(path_to)
+                download(argument)
 
             if command == 'move':
-                move_file(path_to)
+                move_file(argument)
 
             if command == 'del':
-                remove(path_to)
+                remove(argument)
 
             if command == 'rename':
-                rename(path_to)
+                rename(argument)
 
             if command == 'exit':
                 exit()
                 break
 
             if command == 'upl':
-                upload(path_to)
+                upload(argument)
 
 
         except yadisk.exceptions.PathNotFoundError as e:
@@ -112,7 +120,5 @@ if __name__ == "__main__":
             
         except Exception as e:
             print(e)
-
-
 
     
