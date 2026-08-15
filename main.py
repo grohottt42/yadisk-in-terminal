@@ -11,22 +11,34 @@ TOKEN = os.getenv("TOKEN")
 client = yadisk.Client(token=f"{TOKEN}")
 
 
-def look_dir(path: str="") -> list:
+def look_dir(path: str='') -> list:
     with client:
         return [book.name for book in list(client.listdir(f'{path}'))]
+
 
 def change_dir(path: str=''):
     global current_path
     with client:
-        if path == '..':
-            current_path = '/'.join(current_path.split('/')[:-1]) 
-            current_path = '/' if current_path == '' else current_path
-        elif path[0] == '/':
-            if client.exists(path.strip()) and client.is_dir(path.strip()):
-                current_path = path.strip()
-        else: 
-            if client.exists(current_path.strip('/') + '/' + path) and client.is_dir(current_path.strip('/') + '/' + path): 
-                current_path = current_path.strip('/') + '/' + path     
+        parts = []
+        for part in path.split('/'):
+            parts.append(part)
+
+        if parts[0] == '':
+            current_path = '/'
+            parts.pop(0)
+        
+        for part_dir in parts:
+            if part_dir == '..':
+                current_path = '/'.join(current_path.split('/')[:-1]) 
+                current_path = '/' if current_path == '' else current_path
+            elif part_dir == '':
+                continue
+            elif part_dir == '.':
+                continue 
+            else:
+                if client.exists(current_path.strip('/') + '/' + part_dir) and client.is_dir(current_path.strip('/') + '/' + part_dir): 
+                    current_path = current_path.strip('/') + '/' + part_dir  
+
 
 def mk_dir(path: str='', name: str=''):
     with client:
@@ -67,6 +79,7 @@ def rename(path:str=''):
         client.rename(current_path, path)
         current_path = path
 
+
 def exit():
     with client:
         client.close()
@@ -81,7 +94,7 @@ if __name__ == "__main__":
     print(look_dir(current_path))
     while True:
         try:
-            parts = input(f"{current_path}: ").strip().split(" ", 1)
+            parts = input(f"disk:{current_path}: ").strip().split(" ", 1)
 
             command = parts[0]
             argument = parts[1] if len(parts) > 1 else ""
@@ -101,7 +114,7 @@ if __name__ == "__main__":
             if command == 'move':
                 move_file(argument)
 
-            if command == 'del':
+            if command == 'rm':
                 remove(argument)
 
             if command == 'rename':
